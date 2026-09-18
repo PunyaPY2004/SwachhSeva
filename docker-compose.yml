@@ -1,0 +1,70 @@
+# SwachhSeva — Docker Compose
+#
+# Runs PostgreSQL + the Flask backend + the admin dashboard together.
+# The mobile app is NOT included here — Expo doesn't containerize well
+# for phone testing (your phone needs to reach it directly over Wi-Fi),
+# so keep running it with `npx expo start` as before. Only the backend
+# and dashboard benefit from Docker.
+#
+# Usage:
+#   1. Copy backend/.env.example to backend/.env and fill in real values
+#      (DATABASE_URL should stay as set below — it points at the
+#      "db" service by its container name, not localhost).
+#   2. docker compose up --build
+#   3. Backend: http://localhost:5000/api/health
+#      Dashboard: http://localhost:8080
+#   4. First time only, in a second terminal:
+#        docker compose exec backend flask --app run init-db
+#        docker compose exec backend flask --app run create-admin
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: swachhseva_user
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: swachhseva
+    volumes:
+      - swachhseva_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swachhseva_user -d swachhseva"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://swachhseva_user:changeme@db:5432/swachhseva
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-in-your-env-file}
+      FLASK_ENV: production
+      UPLOAD_FOLDER: uploads
+      RESOLUTION_UPLOAD_FOLDER: uploads/resolutions
+      AI_MODEL_PATH: models/civic_classifier.keras
+    volumes:
+      - swachhseva_uploads:/app/uploads
+      - ./backend/models:/app/models
+    ports:
+      - "5000:5000"
+
+  admin-dashboard:
+    build:
+      context: ./admin-dashboard
+      args:
+        VITE_API_BASE_URL: http://localhost:5000/api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  swachhseva_pgdata:
+  swachhseva_uploads:

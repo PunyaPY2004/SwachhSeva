@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "SwachhSeva",
+    "slug": "swachhseva",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#1B5E20"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.swachhseva.app",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SwachhSeva needs access to your photos so you can attach a picture of the civic issue.",
+          "cameraPermission": "SwachhSeva needs access to your camera so you can photograph the civic issue."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "SwachhSeva needs your location to tag where the civic issue is, so officers know where to go."
+        }
+      ]
+    ]
+  }
+}

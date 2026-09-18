@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+dataset/*/*.jpg
+dataset/*/*.jpeg
+dataset/*/*.png
+!dataset/*/.gitkeep
+splits/*.csv
+results/*
+!results/.gitkeep

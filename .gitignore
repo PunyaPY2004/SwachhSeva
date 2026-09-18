@@ -1,0 +1,24 @@
+﻿# Python
+backend/venv/
+admin-dashboard/venv/
+venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/instance/
+backend/.env
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Node / React / Expo
+node_modules/
+admin-dashboard/node_modules/
+admin-dashboard/dist/
+admin-dashboard/.env
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+*.apk
