@@ -9,3 +9,4 @@ models/*.h5
 instance/
 *.db
 .pytest_cache/
+venvvenv/

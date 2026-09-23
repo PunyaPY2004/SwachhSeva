@@ -22,8 +22,8 @@ class Config:
     )
 
     AI_MODEL_PATH = os.path.join(
-        BASE_DIR, os.environ.get("AI_MODEL_PATH", "models/civic_classifier.keras")
-    )
+    BASE_DIR, os.environ.get("AI_MODEL_PATH", "models/civic_classifier.tflite")
+)
 
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_MB", 8)) * 1024 * 1024
     ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg"}

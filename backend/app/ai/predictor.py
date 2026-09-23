@@ -1,5 +1,6 @@
 """
-Loads the trained MobileNetV2 civic-issue classifier if it exists.
+Loads the trained MobileNetV2 civic-issue classifier (TensorFlow Lite
+version) if it exists.
 
 IMPORTANT — honesty rule:
 If no trained model file is present at AI_MODEL_PATH, this module NEVER
@@ -8,46 +9,62 @@ demo_mode=True with predicted_class=None, and the complaint is routed to
 PENDING_REVIEW so a human officer classifies it manually. This matches the
 project rule: never pretend a demo output is a real AI result.
 
-Once you train a real model (see training/train.py) and place the .keras
-file at AI_MODEL_PATH, this module automatically switches to real
-predictions on the next backend restart — no code changes needed.
+Once you place the .tflite file at AI_MODEL_PATH, this module automatically
+switches to real predictions on the next backend restart — no code changes
+needed.
+
+Uses tflite-runtime instead of full TensorFlow — dramatically lighter on
+memory, which matters on low-RAM hosting (e.g. Render's free tier).
 """
 import os
 import threading
 
 import numpy as np
+from PIL import Image
 from flask import current_app
 
-_model = None
+_interpreter = None
+_input_details = None
+_output_details = None
 _model_lock = threading.Lock()
 _load_attempted = False
 
 
 def _try_load_model(model_path: str):
-    global _model, _load_attempted
+    global _interpreter, _input_details, _output_details, _load_attempted
     with _model_lock:
         if _load_attempted:
-            return _model
+            return _interpreter
         _load_attempted = True
 
         if not os.path.exists(model_path):
-            _model = None
+            _interpreter = None
             return None
 
         try:
             # Imported lazily so the backend can run in demo mode even on
-            # machines where TensorFlow isn't installed yet.
-            import tensorflow as tf
+            # machines where tflite-runtime isn't installed yet.
+            try:
+                from tflite_runtime.interpreter import Interpreter
+            except ImportError:
+                # Fallback for local dev machines that have full TensorFlow
+                # installed but not the standalone tflite-runtime package.
+                from tensorflow.lite.python.interpreter import Interpreter
 
-            _model = tf.keras.models.load_model(model_path)
+            interpreter = Interpreter(model_path=model_path)
+            interpreter.allocate_tensors()
+
+            _input_details = interpreter.get_input_details()
+            _output_details = interpreter.get_output_details()
+            _interpreter = interpreter
         except Exception as exc:  # noqa: BLE001 - we want to degrade to demo mode on ANY load failure
             current_app.logger.warning(
                 "Could not load AI model at %s (%s). Falling back to Demo Mode.",
                 model_path,
                 exc,
             )
-            _model = None
-        return _model
+            _interpreter = None
+        return _interpreter
 
 
 def is_model_loaded() -> bool:
@@ -76,9 +93,9 @@ def predict(image_absolute_path: str) -> dict:
         }
     """
     model_path = current_app.config["AI_MODEL_PATH"]
-    model = _try_load_model(model_path)
+    interpreter = _try_load_model(model_path)
 
-    if model is None:
+    if interpreter is None:
         return {
             "demo_mode": True,
             "predicted_class": None,
@@ -86,16 +103,19 @@ def predict(image_absolute_path: str) -> dict:
             "probabilities": None,
         }
 
-    from tensorflow.keras.preprocessing import image as keras_image
-
     classes = current_app.config["ISSUE_CLASSES"]
 
-    img = keras_image.load_img(image_absolute_path, target_size=(224, 224))
-    arr = keras_image.img_to_array(img)
-    arr = arr / 255.0
+    img = Image.open(image_absolute_path).convert("RGB").resize((224, 224))
+    arr = np.array(img, dtype=np.float32) / 255.0
     arr = np.expand_dims(arr, axis=0)
 
-    raw_output = model.predict(arr, verbose=0)[0]
+    input_index = _input_details[0]["index"]
+    output_index = _output_details[0]["index"]
+
+    interpreter.set_tensor(input_index, arr)
+    interpreter.invoke()
+    raw_output = interpreter.get_tensor(output_index)[0]
+
     probabilities = {cls: float(raw_output[i]) for i, cls in enumerate(classes)}
 
     best_idx = int(np.argmax(raw_output))
