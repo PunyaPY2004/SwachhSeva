@@ -45,10 +45,8 @@ def _try_load_model(model_path: str):
             # Imported lazily so the backend can run in demo mode even on
             # machines where tflite-runtime isn't installed yet.
             try:
-                from tflite_runtime.interpreter import Interpreter
+                from ai_edge_litert.interpreter import Interpreter
             except ImportError:
-                # Fallback for local dev machines that have full TensorFlow
-                # installed but not the standalone tflite-runtime package.
                 from tensorflow.lite.python.interpreter import Interpreter
 
             interpreter = Interpreter(model_path=model_path)

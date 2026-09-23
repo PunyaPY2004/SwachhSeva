@@ -15,5 +15,5 @@ reportlab==4.2.2
 
 # AI (only needed once you train/load a real MobileNetV2 model;
 # the backend runs fine in Demo Mode without these installed)
-tflite-runtime==2.14.0
+ai-edge-litert
 Pillow==10.4.0
