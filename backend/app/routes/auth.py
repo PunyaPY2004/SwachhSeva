@@ -1,6 +1,6 @@
 import re
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 from app.extensions import db
