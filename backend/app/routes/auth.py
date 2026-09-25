@@ -71,6 +71,10 @@ def login():
     token = create_access_token(identity=str(user.id), additional_claims={"role": user.role})
     return jsonify({"token": token, "user": user.to_dict()}), 200
 
+@auth_bp.get("/debug-list-users")
+def debug_list_users():
+    users = User.query.all()
+    return jsonify([{"id": u.id, "email": u.email, "role": u.role} for u in users]), 200
 
 @auth_bp.get("/me")
 @jwt_required()
