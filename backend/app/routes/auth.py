@@ -57,6 +57,14 @@ def login():
         return jsonify({"error": "validation_error", "message": "email and password are required."}), 400
 
     user = User.query.filter_by(email=email).first()
+    current_app.logger.warning(
+        "LOGIN DEBUG: email=%r found_user=%s stored_hash=%r input_password=%r check_result=%s",
+         email,
+         user is not None,
+         user.password_hash if user else None,
+         password,
+         user.check_password(password) if user else None,
+    )
     if user is None or not user.check_password(password):
         return jsonify({"error": "invalid_credentials", "message": "Incorrect email or password."}), 401
 
