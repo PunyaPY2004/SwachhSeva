@@ -258,6 +258,16 @@ def update_status(complaint_id):
             {"error": "validation_error", "message": f"status must be one of: {', '.join(VALID_STATUSES)}"}
         ), 400
 
+    if new_status == "OVERDUE":
+            return jsonify(
+                {"error": "validation_error", "message": "OVERDUE is set automatically from the SLA deadline and can't be chosen manually."}
+        ), 400
+
+    if new_status == "RESOLVED":
+            return jsonify(
+                {"error": "validation_error", "message": "Use 'Mark as Resolved' with a resolution photo to resolve a complaint."}
+        ), 400
+
     # Officer manually classifying a PENDING_REVIEW / low-confidence complaint.
     if issue_type:
         try:

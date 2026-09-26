@@ -122,6 +122,9 @@ class Complaint(db.Model):
             "sla_days": self.sla_days,
             "sla_deadline": _iso_utc(self.sla_deadline),
             "status": "OVERDUE" if self.is_overdue() else self.status,
+            # The real stored status. "status" above may be the display-only
+            # "OVERDUE" label, which must never be written back.
+            "workflow_status": self.status,
             "officer_remarks": self.officer_remarks,
             "resolution_photo": self.resolution_photo,
             "resolved_at": _iso_utc(self.resolved_at),
