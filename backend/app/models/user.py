@@ -44,5 +44,9 @@ class User(db.Model):
             "phone": self.phone,
             "role": self.role,
             "department": self.department,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": (
+                self.created_at.replace(tzinfo=timezone.utc)
+                if self.created_at.tzinfo is None
+                else self.created_at
+                ).isoformat() if self.created_at else None,
         }

@@ -15,6 +15,15 @@ VALID_STATUSES = (
     "OVERDUE",
 )
 
+def _iso_utc(dt):
+    """Stored datetimes are naive UTC. Mark them explicitly as UTC so the
+    dashboard/app convert them to the viewer's local time (e.g. IST)
+    instead of misreading them as already-local."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
 
 class Complaint(db.Model):
     __tablename__ = "complaints"
@@ -111,19 +120,19 @@ class Complaint(db.Model):
             "longitude": self.longitude,
             "department": self.department,
             "sla_days": self.sla_days,
-            "sla_deadline": self.sla_deadline.isoformat() if self.sla_deadline else None,
+            "sla_deadline": _iso_utc(self.sla_deadline),
             "status": "OVERDUE" if self.is_overdue() else self.status,
             "officer_remarks": self.officer_remarks,
             "resolution_photo": self.resolution_photo,
-            "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
+            "resolved_at": _iso_utc(self.resolved_at),
             "assigned_officer_id": self.assigned_officer_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": _iso_utc(self.created_at),
+            "updated_at": _iso_utc(self.updated_at),
             "upvote_count": self.upvote_count,
             "is_escalated": self.is_escalated(),
             "days_overdue": self.days_overdue(),
             "dispute_reason": self.dispute_reason,
-            "disputed_at": self.disputed_at.isoformat() if self.disputed_at else None,
+            "disputed_at": _iso_utc(self.disputed_at),
             "dispute_count": self.dispute_count,
         }
         if include_citizen and self.citizen:
