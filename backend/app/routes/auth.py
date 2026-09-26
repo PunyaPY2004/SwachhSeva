@@ -1,6 +1,6 @@
 import re
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 from app.extensions import db
@@ -57,24 +57,13 @@ def login():
         return jsonify({"error": "validation_error", "message": "email and password are required."}), 400
 
     user = User.query.filter_by(email=email).first()
-    current_app.logger.warning(
-        "LOGIN DEBUG: email=%r found_user=%s stored_hash=%r input_password=%r check_result=%s",
-         email,
-         user is not None,
-         user.password_hash if user else None,
-         password,
-         user.check_password(password) if user else None,
-    )
+
     if user is None or not user.check_password(password):
         return jsonify({"error": "invalid_credentials", "message": "Incorrect email or password."}), 401
 
     token = create_access_token(identity=str(user.id), additional_claims={"role": user.role})
     return jsonify({"token": token, "user": user.to_dict()}), 200
 
-@auth_bp.get("/debug-list-users")
-def debug_list_users():
-    users = User.query.all()
-    return jsonify([{"id": u.id, "email": u.email, "role": u.role} for u in users]), 200
 
 @auth_bp.get("/me")
 @jwt_required()

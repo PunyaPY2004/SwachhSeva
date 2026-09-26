@@ -50,4 +50,11 @@ def save_image(file_storage, subfolder: str = "") -> str:
         raise ValueError("The uploaded file is not a valid image.") from exc
 
     relative_path = os.path.join(subfolder, safe_name) if subfolder else safe_name
-    return relative_path.replace("\\", "/")
+    relative_path = relative_path.replace("\\", "/")
+
+    # Mirror to persistent storage so the photo survives Render redeploys.
+    # Imported here to avoid a circular import at module load time.
+    from app.services import image_storage
+
+    image_storage.upload(target_path, relative_path)
+    return relative_path

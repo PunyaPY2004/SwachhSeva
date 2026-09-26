@@ -12,6 +12,7 @@ Pillow==10.4.0
 bcrypt==4.2.0
 numpy==1.26.4
 reportlab==4.2.2
+cloudinary==1.41.0
 
 # AI (only needed once you train/load a real MobileNetV2 model;
 # the backend runs fine in Demo Mode without these installed)

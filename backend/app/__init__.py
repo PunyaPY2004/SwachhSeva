@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, jsonify, send_from_directory, abort
+from flask import Flask, jsonify, send_from_directory, abort, redirect
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -60,9 +60,25 @@ def create_app(config_class=Config):
         # Werkzeug's internal path handling and causes a false 404 for any
         # file inside a subfolder (like resolutions/xxx.jpg). Check for
         # path-traversal attempts directly on the URL-style path instead.
-        if ".." in filename.split("/"):
+        parts = filename.split("/")
+        if ".." in parts:
             abort(404)
-        return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+        # Serve the local copy while it exists (fast, and the only option
+        # in local development without Cloudinary).
+        local_path = os.path.join(app.config["UPLOAD_FOLDER"], *parts)
+        if os.path.isfile(local_path):
+            return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+        # Render's free tier wipes local disk on every redeploy/restart —
+        # fall back to the persistent Cloudinary copy.
+        from app.services import image_storage
+
+        cloud_url = image_storage.public_url(filename)
+        if cloud_url:
+            return redirect(cloud_url, code=302)
+
+        abort(404)
 
     @app.errorhandler(413)
     def too_large(_e):
