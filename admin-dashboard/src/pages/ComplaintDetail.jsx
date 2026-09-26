@@ -12,16 +12,24 @@ const ISSUE_OPTIONS = [
   ["damaged_footpath", "Damaged Footpath"],
 ];
 
+// Statuses an officer can pick by hand.
+// - RESOLVED is deliberately excluded: resolving requires a resolution photo,
+//   which goes through the "Mark as Resolved" card below (it also records
+//   resolved_at, which the officer leaderboard depends on).
+// - OVERDUE is never stored: the backend derives it from the SLA deadline.
 const STATUS_OPTIONS = [
   "SUBMITTED",
   "PENDING_REVIEW",
   "OFFICER_REVIEW",
   "ASSIGNED",
   "IN_PROGRESS",
-  "RESOLVED",
   "REOPENED",
   "REJECTED",
 ];
+
+function statusLabel(status) {
+  return status.replaceAll("_", " ");
+}
 
 export default function ComplaintDetail() {
   const { id } = useParams();
@@ -32,6 +40,9 @@ export default function ComplaintDetail() {
 
   const [issueType, setIssueType] = useState("");
   const [statusValue, setStatusValue] = useState("");
+  // The stored status when the form was last synced — used so Save only
+  // sends a status change if the officer actually changed the dropdown.
+  const [initialStatus, setInitialStatus] = useState("");
   const [remarks, setRemarks] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
@@ -50,15 +61,25 @@ export default function ComplaintDetail() {
     fetchOfficers().then(setOfficers).catch(() => {});
   }, []);
 
+  // Keeps every form field in step with the latest server copy of the
+  // complaint — called after the initial load, after Save, and after Resolve.
+  function syncForm(data) {
+    // `workflow_status` is the real stored status. `status` may be the
+    // display-only "OVERDUE" label, which isn't a selectable option.
+    const current = data.workflow_status ?? data.status;
+    setIssueType(data.issue_type || "");
+    setStatusValue(current);
+    setInitialStatus(current);
+    setRemarks(data.officer_remarks || "");
+    setAssignedOfficerId(data.assigned_officer_id || "");
+  }
+
   function load() {
     setLoading(true);
     fetchComplaint(id)
       .then((data) => {
         setComplaint(data);
-        setIssueType(data.issue_type || "");
-        setStatusValue(data.status);
-        setRemarks(data.officer_remarks || "");
-        setAssignedOfficerId(data.assigned_officer_id || "");
+        syncForm(data);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -69,7 +90,12 @@ export default function ComplaintDetail() {
     setSaving(true);
     setSaveMsg(null);
     try {
-      const payload = { status: statusValue, remarks };
+      const payload = { remarks };
+      // Only send a status if the officer changed it, so saving remarks or
+      // an assignment can never silently overwrite the current status.
+      if (statusValue && statusValue !== initialStatus) {
+        payload.status = statusValue;
+      }
       // Only send issue_type if the officer picked/changed a real classification.
       if (issueType && issueType !== complaint.issue_type) {
         payload.issue_type = issueType;
@@ -79,6 +105,7 @@ export default function ComplaintDetail() {
       }
       const updated = await updateStatus(id, payload);
       setComplaint(updated);
+      syncForm(updated);
       setSaveMsg("Saved.");
     } catch (err) {
       setSaveMsg(err.message);
@@ -91,9 +118,11 @@ export default function ComplaintDetail() {
     e.preventDefault();
     if (!resolutionFile) return;
     setResolving(true);
+    setSaveMsg(null);
     try {
       const updated = await resolveComplaint(id, { file: resolutionFile, remarks });
       setComplaint(updated);
+      syncForm(updated);
       setResolutionFile(null);
     } catch (err) {
       setSaveMsg(err.message);
@@ -105,7 +134,8 @@ export default function ComplaintDetail() {
   if (loading) return <div className="loading-state">Loading complaint…</div>;
   if (error || !complaint) return <div className="empty-state">{error || "Not found."}</div>;
 
-  const canResolve = complaint.status !== "RESOLVED" && complaint.status !== "REJECTED";
+  const currentStatus = complaint.workflow_status ?? complaint.status;
+  const canResolve = currentStatus !== "RESOLVED" && currentStatus !== "REJECTED";
 
   return (
     <>
@@ -132,7 +162,7 @@ export default function ComplaintDetail() {
               </div>
             )}
 
-            {complaint.status === "REOPENED" && complaint.dispute_reason && (
+            {currentStatus === "REOPENED" && complaint.dispute_reason && (
               <div
                 className="demo-banner"
                 style={{ marginTop: 16, background: "var(--alert-soft)", borderColor: "#e0b8b0", color: "#7d2a1f" }}
@@ -245,12 +275,23 @@ export default function ComplaintDetail() {
               <div className="field">
                 <label>Status</label>
                 <select value={statusValue} onChange={(e) => setStatusValue(e.target.value)}>
+                  {/* Show the real current status even when it isn't one an
+                      officer can pick by hand (e.g. RESOLVED), instead of the
+                      browser silently displaying the first option. */}
+                  {statusValue && !STATUS_OPTIONS.includes(statusValue) && (
+                    <option value={statusValue} disabled>
+                      {statusLabel(statusValue)} (current)
+                    </option>
+                  )}
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>
-                      {s.replace("_", " ")}
+                      {statusLabel(s)}
                     </option>
                   ))}
                 </select>
+                <p className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
+                  To resolve a complaint, use "Mark as Resolved" with a photo.
+                </p>
               </div>
 
               <div className="field">

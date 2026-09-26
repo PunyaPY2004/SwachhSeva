@@ -22,4 +22,4 @@
  *      export const API_BASE_URL = "http://10.0.2.2:5000/api";
  */
 
-export const API_BASE_URL = "http://192.168.43.167:5000/api";
+export const API_BASE_URL = "https://swachhseva-backend.onrender.com/api";
