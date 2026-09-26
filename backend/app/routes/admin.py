@@ -291,7 +291,9 @@ def update_status(complaint_id):
         complaint.assigned_officer_id = assigned_officer_id
 
     db.session.commit()
-    return jsonify(complaint.to_dict(include_citizen=True)), 200
+    entry = complaint.to_dict(include_citizen=True)
+    entry["priority_score"] = compute_priority_score(complaint)
+    return jsonify(entry), 200
 
 
 @admin_bp.post("/complaints/<int:complaint_id>/resolve")
@@ -318,7 +320,9 @@ def resolve_complaint(complaint_id):
         complaint.officer_remarks = remarks
 
     db.session.commit()
-    return jsonify(complaint.to_dict(include_citizen=True)), 200
+    entry = complaint.to_dict(include_citizen=True)
+    entry["priority_score"] = compute_priority_score(complaint)
+    return jsonify(entry), 200
 
 
 @admin_bp.get("/officers")
